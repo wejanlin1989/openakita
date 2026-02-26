@@ -3608,8 +3608,10 @@ create_agent(name="名称", description="描述", skills=["技能"], custom_prom
         # - 标记剩余步骤状态（in_progress→completed, pending→skipped）
         # - 保存并注销 Plan
         # 注意：ask_user 退出时不关闭 Plan（用户回复后需继续执行）
+        # 注意：子 Agent 调用时不关闭 Plan（Plan 属于父 Agent）
         exit_reason = getattr(self.reasoning_engine, "_last_exit_reason", "normal")
-        if exit_reason != "ask_user":
+        is_sub_agent = getattr(self, "_is_sub_agent_call", False)
+        if exit_reason != "ask_user" and not is_sub_agent:
             conversation_id = getattr(self, "_current_conversation_id", "") or session_id
             try:
                 from ..tools.handlers.plan import auto_close_plan

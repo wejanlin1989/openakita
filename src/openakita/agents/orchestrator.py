@@ -579,15 +579,23 @@ class AgentOrchestrator:
     async def _call_agent(
         agent: Any, session: Any, message: str, *, gateway: Any = None
     ) -> str:
-        """Thin wrapper around agent.chat_with_session for use as a task target."""
-        session_messages = session.context.get_messages()
-        return await agent.chat_with_session(
-            message=message,
-            session_messages=session_messages,
-            session_id=session.id,
-            session=session,
-            gateway=gateway,
-        )
+        """Thin wrapper around agent.chat_with_session for use as a task target.
+
+        Sets _is_sub_agent_call so that _finalize_session skips plan
+        auto-close (the plan belongs to the parent agent, not this sub-agent).
+        """
+        agent._is_sub_agent_call = True
+        try:
+            session_messages = session.context.get_messages()
+            return await agent.chat_with_session(
+                message=message,
+                session_messages=session_messages,
+                session_id=session.id,
+                session=session,
+                gateway=gateway,
+            )
+        finally:
+            agent._is_sub_agent_call = False
 
     async def _try_fallback_or(
         self,
