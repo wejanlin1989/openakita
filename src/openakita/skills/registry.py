@@ -55,6 +55,12 @@ class SkillEntry:
     name_i18n: dict[str, str] = field(default_factory=dict)
     description_i18n: dict[str, str] = field(default_factory=dict)
 
+    # 全局启用 / 禁用标记
+    # 用户通过 UI / skills.json 禁用的技能在注册表中保留但标记 disabled=True，
+    # 这样 SkillCatalog 和 list_skills 工具会过滤它们，
+    # 而子 Agent INCLUSIVE 模式仍可通过 profile.skills 显式引用并重新启用。
+    disabled: bool = False
+
     # 完整技能对象引用 (延迟加载)
     _parsed_skill: Optional["ParsedSkill"] = field(default=None, repr=False)
 
@@ -204,13 +210,31 @@ class SkillRegistry:
         """检查技能是否存在"""
         return name in self._skills
 
-    def list_all(self) -> list[SkillEntry]:
-        """列出所有技能"""
-        return list(self._skills.values())
+    def set_disabled(self, name: str, disabled: bool = True) -> bool:
+        """设置技能的 disabled 标记。Returns True if skill exists."""
+        skill = self._skills.get(name)
+        if skill is not None:
+            skill.disabled = disabled
+            return True
+        return False
+
+    def list_all(self, include_disabled: bool = True) -> list[SkillEntry]:
+        """列出所有技能。
+
+        Args:
+            include_disabled: 是否包含被用户禁用的技能，默认 True 保持向后兼容。
+        """
+        if include_disabled:
+            return list(self._skills.values())
+        return [s for s in self._skills.values() if not s.disabled]
+
+    def list_enabled(self) -> list[SkillEntry]:
+        """列出所有已启用的技能（排除 disabled=True）。"""
+        return [s for s in self._skills.values() if not s.disabled]
 
     def list_metadata(self) -> list[dict]:
         """
-        列出所有技能元数据 (Level 1)
+        列出已启用技能元数据 (Level 1)
 
         用于启动时向 LLM 展示可用技能
         """
@@ -221,6 +245,7 @@ class SkillRegistry:
                 "auto_invoke": not skill.disable_model_invocation,
             }
             for skill in self._skills.values()
+            if not skill.disabled
         ]
 
     def search(
@@ -281,11 +306,11 @@ class SkillRegistry:
 
     def get_tool_schemas(self) -> list[dict]:
         """
-        获取所有技能的工具 schema
+        获取已启用技能的工具 schema
 
-        用于将技能作为工具提供给 LLM
+        用于将技能作为工具提供给 LLM（排除 disabled 技能）
         """
-        return [skill.to_tool_schema() for skill in self._skills.values()]
+        return [skill.to_tool_schema() for skill in self._skills.values() if not skill.disabled]
 
     def list_system_skills(self) -> list[SkillEntry]:
         """列出所有系统技能"""

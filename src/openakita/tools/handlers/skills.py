@@ -70,19 +70,23 @@ class SkillsHandler:
             return f"❌ Unknown skills tool: {tool_name}"
 
     def _list_skills(self, params: dict) -> str:
-        """列出所有技能"""
-        skills = self.agent.skill_registry.list_all()
-        if not skills:
+        """列出所有技能，区分启用/禁用状态"""
+        all_skills = self.agent.skill_registry.list_all(include_disabled=True)
+        if not all_skills:
             return "当前没有已安装的技能\n\n提示: 技能应放在 skills/ 目录下，每个技能是一个包含 SKILL.md 的文件夹"
 
-        # 分类显示
-        system_skills = [s for s in skills if s.system]
-        external_skills = [s for s in skills if not s.system]
+        system_skills = [s for s in all_skills if s.system]
+        enabled_external = [s for s in all_skills if not s.system and not s.disabled]
+        disabled_external = [s for s in all_skills if not s.system and s.disabled]
 
-        output = f"已安装 {len(skills)} 个技能 (遵循 Agent Skills 规范):\n\n"
+        enabled_total = len(system_skills) + len(enabled_external)
+        output = (
+            f"已安装 {len(all_skills)} 个技能 "
+            f"({enabled_total} 启用, {len(disabled_external)} 禁用):\n\n"
+        )
 
         if system_skills:
-            output += f"**系统技能 ({len(system_skills)})**:\n"
+            output += f"**系统技能 ({len(system_skills)})** [全部启用]:\n"
             for skill in system_skills:
                 auto = "自动" if not skill.disable_model_invocation else "手动"
                 zh_name = skill.name_i18n.get("zh", "")
@@ -90,16 +94,24 @@ class SkillsHandler:
                 output += f"- {name_part} [{auto}] - {skill.description}\n"
             output += "\n"
 
-        if external_skills:
-            output += f"**外部技能 ({len(external_skills)})**:\n"
-            for skill in external_skills:
+        if enabled_external:
+            output += f"**已启用外部技能 ({len(enabled_external)})**:\n"
+            for skill in enabled_external:
                 auto = "自动" if not skill.disable_model_invocation else "手动"
                 zh_name = skill.name_i18n.get("zh", "")
                 name_part = f"{skill.name} ({zh_name})" if zh_name else skill.name
                 output += f"- {name_part} [{auto}]\n"
                 output += f"  {skill.description}\n\n"
 
-        return output
+        if disabled_external:
+            output += f"**已禁用外部技能 ({len(disabled_external)})** [需在技能面板启用后才可使用]:\n"
+            for skill in disabled_external:
+                zh_name = skill.name_i18n.get("zh", "")
+                name_part = f"{skill.name} ({zh_name})" if zh_name else skill.name
+                output += f"- {name_part} [已禁用]\n"
+                output += f"  {skill.description}\n\n"
+
+        return self._truncate_skill_content("list_skills", output)
 
     # Markdown 链接中引用同目录 .md 文件的正则：
     #   [`filename.md`](filename.md)  或  [filename.md](filename.md)
@@ -468,9 +480,11 @@ class SkillsHandler:
 
         # 热重载
         try:
+            from openakita.core.agent import _collect_preset_referenced_skills
             effective = loader.compute_effective_allowlist(existing_allowlist) if loader else existing_allowlist
+            agent_skills = _collect_preset_referenced_skills()
             if loader:
-                loader.prune_external_by_allowlist(effective)
+                loader.prune_external_by_allowlist(effective, agent_referenced_skills=agent_skills)
             catalog = getattr(self.agent, "skill_catalog", None)
             if catalog:
                 catalog.invalidate_cache()

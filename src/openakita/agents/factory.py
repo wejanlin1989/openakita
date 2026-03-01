@@ -114,7 +114,7 @@ class AgentFactory:
             return
 
         registry = agent.skill_registry
-        all_skills = [skill.name for skill in registry.list_all()]
+        all_skills = [skill.name for skill in registry.list_all(include_disabled=True)]
 
         removed = 0
         if profile.skills_mode == SkillsMode.INCLUSIVE:
@@ -125,6 +125,12 @@ class AgentFactory:
                 if not AgentFactory._skill_in_set(skill_name, exact, short):
                     registry.unregister(skill_name)
                     removed += 1
+
+            # 子 Agent 显式选择的技能即使全局 disabled 也应在此 Agent 上可用
+            for skill in registry.list_all(include_disabled=True):
+                if skill.disabled:
+                    skill.disabled = False
+
         elif profile.skills_mode == SkillsMode.EXCLUSIVE:
             exact, short = AgentFactory._build_skill_match_set(profile.skills)
             for skill_name in all_skills:

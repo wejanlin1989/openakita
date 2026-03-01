@@ -42,12 +42,12 @@ Use `get_skill_info(skill_name)` to load full instructions when needed.
 
     def generate_catalog(self) -> str:
         """
-        生成技能清单
+        生成已启用技能清单（disabled 技能不会出现在系统提示中）
 
         Returns:
             格式化的技能清单字符串
         """
-        skills = self.registry.list_all()
+        skills = self.registry.list_enabled()
 
         if not skills:
             empty_catalog = (
@@ -97,7 +97,7 @@ Use `get_skill_info(skill_name)` to load full instructions when needed.
 
         用于 token 受限的场景
         """
-        skills = self.registry.list_all()
+        skills = self.registry.list_enabled()
         if not skills:
             return "No skills installed."
 
@@ -108,13 +108,11 @@ Use `get_skill_info(skill_name)` to load full instructions when needed.
 
     def get_index_catalog(self) -> str:
         """
-        获取“全量索引”版技能清单（仅名称，尽量短，但完整）。
+        获取已启用技能的“全量索引”（仅名称，尽量短，但完整）。
 
-        目的：
-        - 在 token 预算受限时，也保证模型能“看到所有技能名字”，避免清单被截断成半截。
-        - 具体用法再通过 `get_skill_info(skill_name)` 渐进式披露。
+        disabled 技能不会出现在索引中，避免 LLM 误用被禁用的技能。
         """
-        skills = self.registry.list_all()
+        skills = self.registry.list_enabled()
         if not skills:
             return "## Skills Index (complete)\n\nNo skills installed."
 

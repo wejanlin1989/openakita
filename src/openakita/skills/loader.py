@@ -341,26 +341,40 @@ class SkillLoader:
         agent_referenced_skills: set[str] | None = None,
     ) -> int:
         """
-        根据外部技能 allowlist 裁剪已加载技能。
+        根据外部技能 allowlist 裁剪 / 标记已加载技能。
 
         约定：
-        - system 技能永远保留
-        - external_allowlist 为 None 表示“不做限制（外部技能全部启用）”
-        - external_allowlist 为 set() 表示“禁用所有外部技能”
+        - system 技能永远保留且启用
+        - external_allowlist 为 None → 不做限制（全部启用）
+        - external_allowlist 为 set() → 禁用所有外部技能
+
+        不在 allowlist 中的外部技能：
+        - 被 agent_referenced_skills 引用 → 保留但标记 disabled=True
+          （子 Agent INCLUSIVE 模式可显式启用）
+        - 否则 → 从注册表和 loader 中移除
         """
         if external_allowlist is None:
+            for name in self._loaded_skills:
+                self.registry.set_disabled(name, False)
             return 0
 
         keep_extra = agent_referenced_skills or set()
         removed = 0
+        disabled_count = 0
         for name, skill in list(self._loaded_skills.items()):
             try:
                 if getattr(skill.metadata, "system", False):
+                    self.registry.set_disabled(name, False)
                     continue
             except Exception:
                 continue
 
-            if name not in external_allowlist and name not in keep_extra:
+            if name in external_allowlist:
+                self.registry.set_disabled(name, False)
+            elif name in keep_extra:
+                self.registry.set_disabled(name, True)
+                disabled_count += 1
+            else:
                 self._loaded_skills.pop(name, None)
                 try:
                     self.registry.unregister(name)
@@ -368,8 +382,11 @@ class SkillLoader:
                     pass
                 removed += 1
 
-        if removed:
-            logger.info(f"Pruned {removed} external skills by allowlist")
+        if removed or disabled_count:
+            logger.info(
+                f"External skills filtered: {removed} removed, "
+                f"{disabled_count} disabled (kept for sub-agents)"
+            )
         return removed
 
     def get_script_content(self, name: str, script_name: str) -> str | None:
