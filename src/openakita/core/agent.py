@@ -3761,7 +3761,7 @@ search_github → install_skill → 使用
           [执行摘要]
           - tool_name({key: val}) → result_hint...
 
-        供 session 保存 assistant 消息时追加，确保下一轮 LLM 能看到上一轮做了什么。
+        调用方将返回值存入消息的 ``tool_summary`` 元数据字段（不要拼入 content）。
         空字符串表示无工具调用。
         """
         trace = getattr(self, "_last_finalized_trace", None) or \

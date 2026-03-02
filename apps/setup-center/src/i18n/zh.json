@@ -34,7 +34,10 @@
     "startFail": "服务启动失败，请检查配置",
     "disconnect": "断开",
     "disconnected": "已断开服务连接",
-    "refreshed": "已刷新"
+    "refreshed": "已刷新",
+    "themeSystem": "主题: 跟随系统",
+    "themeDark": "主题: 暗色",
+    "themeLight": "主题: 亮色"
   },
   "tokenStats": {
     "serviceNotRunning": "服务未运行，无法查看统计",

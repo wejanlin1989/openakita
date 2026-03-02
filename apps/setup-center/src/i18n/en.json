@@ -34,7 +34,10 @@
     "startFail": "Service failed to start. Check config.",
     "disconnect": "Disconnect",
     "disconnected": "Disconnected from service",
-    "refreshed": "Refreshed"
+    "refreshed": "Refreshed",
+    "themeSystem": "Theme: Follow system",
+    "themeDark": "Theme: Dark",
+    "themeLight": "Theme: Light"
   },
   "tokenStats": {
     "serviceNotRunning": "Service not running, unable to view stats",

@@ -938,7 +938,7 @@ function TroubleshootPanel({ t }: { t: (k: string) => string }) {
   );
 }
 
-const THEME_LABELS: Record<Theme, string> = { system: "主题: 跟随系统", dark: "主题: 暗色", light: "主题: 亮色" };
+const THEME_I18N_KEYS: Record<Theme, string> = { system: "topbar.themeSystem", dark: "topbar.themeDark", light: "topbar.themeLight" };
 
 export function App() {
   const { t, i18n } = useTranslation();
@@ -954,8 +954,8 @@ export function App() {
     else if (themePrefState === "dark") next = "light";
     else next = "system";
     setThemePref(next);
-    setNotice(THEME_LABELS[next]);
-  }, [themePrefState]);
+    setNotice(t(THEME_I18N_KEYS[next]));
+  }, [themePrefState, t]);
   const [info, setInfo] = useState<PlatformInfo | null>(null);
   const [workspaces, setWorkspaces] = useState<WorkspaceSummary[]>([]);
   const [currentWorkspaceId, setCurrentWorkspaceId] = useState<string | null>(null);
@@ -8876,7 +8876,7 @@ export function App() {
             <button
               className="topbarRefreshBtn"
               onClick={toggleTheme}
-              title={themePrefState === "system" ? "主题: 随系统" : themePrefState === "dark" ? "主题: 暗色" : "主题: 亮色"}
+              title={t(THEME_I18N_KEYS[themePrefState])}
             >
               {themePrefState === "system" ? <IconLaptop size={14} /> : themePrefState === "dark" ? <IconMoon size={14} /> : <IconSun size={14} />}
             </button>
