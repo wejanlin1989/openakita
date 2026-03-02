@@ -267,7 +267,7 @@ class SkillRegistry:
         query_lower = query.lower()
 
         for skill in self._skills.values():
-            if not include_disabled and skill.disable_model_invocation:
+            if not include_disabled and (skill.disabled or skill.disable_model_invocation):
                 continue
 
             if query_lower in skill.name.lower() or query_lower in skill.description.lower():

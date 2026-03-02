@@ -189,7 +189,7 @@ async def list_skills(request: Request):
         source_url = None
         if skill.skill_path:
             try:
-                origin_file = Path(skill.skill_path) / ".openakita-source"
+                origin_file = Path(skill.skill_path).parent / ".openakita-source"
                 if origin_file.exists():
                     source_url = origin_file.read_text(encoding="utf-8").strip()
             except Exception:

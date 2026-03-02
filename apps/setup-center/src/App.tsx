@@ -1738,6 +1738,13 @@ export function App() {
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ content: JSON.parse(content) }),
           });
+          try {
+            await safeFetch(`${base}/api/skills/reload`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({}),
+            });
+          } catch { /* reload failure is non-blocking */ }
           return;
         }
       } catch {
@@ -7164,7 +7171,7 @@ export function App() {
               <p style={{ color: "#94a3b8", fontSize: 15 }}>此模块已禁用，点击上方开关启用</p>
             </div>
           ) : (
-            <MCPView serviceRunning={serviceStatus?.running ?? false} />
+            <MCPView serviceRunning={serviceStatus?.running ?? false} apiBaseUrl={apiBaseUrl} />
           )}
         </div>
       );

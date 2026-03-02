@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import {
   IconRefresh, IconLink, IconPlus, IconTrash, IconCheck, IconX,
   IconChevronDown, IconChevronRight, IconInfo,
@@ -35,8 +36,6 @@ type AddServerForm = {
   description: string;
   auto_connect: boolean;
 };
-
-const API_BASE = "http://127.0.0.1:18900";
 
 const emptyForm: AddServerForm = {
   name: "",
@@ -82,7 +81,8 @@ function parseArgs(raw: string): string[] {
   return args;
 }
 
-export function MCPView({ serviceRunning }: { serviceRunning: boolean }) {
+export function MCPView({ serviceRunning, apiBaseUrl = "http://127.0.0.1:18900" }: { serviceRunning: boolean; apiBaseUrl?: string }) {
+  const { t } = useTranslation();
   const [servers, setServers] = useState<MCPServer[]>([]);
   const [mcpEnabled, setMcpEnabled] = useState(true);
   const [loading, setLoading] = useState(false);
@@ -97,7 +97,7 @@ export function MCPView({ serviceRunning }: { serviceRunning: boolean }) {
     if (!serviceRunning) return;
     setLoading(true);
     try {
-      const res = await fetch(`${API_BASE}/api/mcp/servers`);
+      const res = await fetch(`${apiBaseUrl}/api/mcp/servers`);
       if (res.ok) {
         const data = await res.json();
         setServers(data.servers || []);
@@ -105,7 +105,7 @@ export function MCPView({ serviceRunning }: { serviceRunning: boolean }) {
       }
     } catch { /* ignore */ }
     setLoading(false);
-  }, [serviceRunning]);
+  }, [serviceRunning, apiBaseUrl]);
 
   useEffect(() => { fetchServers(); }, [fetchServers]);
 
@@ -117,20 +117,20 @@ export function MCPView({ serviceRunning }: { serviceRunning: boolean }) {
   const connectServer = async (name: string) => {
     setBusy(name);
     try {
-      const res = await fetch(`${API_BASE}/api/mcp/connect`, {
+      const res = await fetch(`${apiBaseUrl}/api/mcp/connect`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ server_name: name }),
       });
       const data = await res.json();
       if (data.status === "connected" || data.status === "already_connected") {
-        showMsg(`已连接 ${name}`, true);
+        showMsg(`${t("mcp.connected")} ${name}`, true);
         await fetchServers();
       } else {
-        showMsg(`连接失败: ${data.error || "未知错误"}`, false);
+        showMsg(`${t("mcp.connectFailed")}: ${data.error || t("mcp.unknownError")}`, false);
       }
     } catch (e) {
-      showMsg(`连接异常: ${e}`, false);
+      showMsg(`${t("mcp.connectError")}: ${e}`, false);
     }
     setBusy(null);
   };
@@ -138,43 +138,43 @@ export function MCPView({ serviceRunning }: { serviceRunning: boolean }) {
   const disconnectServer = async (name: string) => {
     setBusy(name);
     try {
-      await fetch(`${API_BASE}/api/mcp/disconnect`, {
+      await fetch(`${apiBaseUrl}/api/mcp/disconnect`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ server_name: name }),
       });
-      showMsg(`已断开 ${name}`, true);
+      showMsg(`${t("mcp.disconnected")} ${name}`, true);
       await fetchServers();
     } catch (e) {
-      showMsg(`断开异常: ${e}`, false);
+      showMsg(`${t("mcp.disconnectError")}: ${e}`, false);
     }
     setBusy(null);
   };
 
   const removeServer = async (name: string) => {
-    if (!confirm(`确定删除 MCP 服务器 "${name}"？`)) return;
+    if (!confirm(t("mcp.confirmDelete", { name }))) return;
     setBusy(name);
     try {
-      const res = await fetch(`${API_BASE}/api/mcp/servers/${encodeURIComponent(name)}`, { method: "DELETE" });
+      const res = await fetch(`${apiBaseUrl}/api/mcp/servers/${encodeURIComponent(name)}`, { method: "DELETE" });
       const data = await res.json();
       if (data.status === "ok") {
-        showMsg(`已删除 ${name}`, true);
+        showMsg(`${t("mcp.deleted")} ${name}`, true);
         await fetchServers();
       } else {
-        showMsg(`删除失败: ${data.message || "未知错误"}`, false);
+        showMsg(`${t("mcp.deleteFailed")}: ${data.message || t("mcp.unknownError")}`, false);
       }
     } catch (e) {
-      showMsg(`删除失败: ${e}`, false);
+      showMsg(`${t("mcp.deleteFailed")}: ${e}`, false);
     }
     setBusy(null);
   };
 
   const addServer = async () => {
     const name = form.name.trim();
-    if (!name) { showMsg("请输入服务器名称", false); return; }
-    if (!/^[a-zA-Z0-9_-]+$/.test(name)) { showMsg("名称只能含字母、数字、连字符、下划线", false); return; }
-    if (form.transport === "stdio" && !form.command.trim()) { showMsg("stdio 模式需要填写启动命令", false); return; }
-    if ((form.transport === "streamable_http" || form.transport === "sse") && !form.url.trim()) { showMsg(`${form.transport === "sse" ? "SSE" : "HTTP"} 模式需要填写 URL`, false); return; }
+    if (!name) { showMsg(t("mcp.nameRequired"), false); return; }
+    if (!/^[a-zA-Z0-9_-]+$/.test(name)) { showMsg(t("mcp.nameInvalid"), false); return; }
+    if (form.transport === "stdio" && !form.command.trim()) { showMsg(t("mcp.commandRequired"), false); return; }
+    if ((form.transport === "streamable_http" || form.transport === "sse") && !form.url.trim()) { showMsg(t("mcp.urlRequired", { transport: form.transport === "sse" ? "SSE" : "HTTP" }), false); return; }
     setBusy("add");
     try {
       const envObj: Record<string, string> = {};
@@ -185,7 +185,7 @@ export function MCPView({ serviceRunning }: { serviceRunning: boolean }) {
         }
       }
       const parsedArgs = parseArgs(form.args);
-      const res = await fetch(`${API_BASE}/api/mcp/servers/add`, {
+      const res = await fetch(`${apiBaseUrl}/api/mcp/servers/add`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -205,9 +205,9 @@ export function MCPView({ serviceRunning }: { serviceRunning: boolean }) {
         let connMsg = "";
         if (cr) {
           if (cr.connected) {
-            connMsg = `，已连接（发现 ${cr.tool_count ?? 0} 个工具）`;
+            connMsg = `, ${t("mcp.autoConnected", { count: cr.tool_count ?? 0 })}`;
           } else {
-            connMsg = `\n⚠️ 自动连接失败: ${cr.error || "未知原因"}，可稍后在列表中手动连接`;
+            connMsg = `\n⚠️ ${t("mcp.autoConnectFailed")}: ${cr.error || t("mcp.unknownError")}`;
           }
         }
         showMsg(`✅ 已添加 ${name}${connMsg}`, !cr || cr.connected !== false);
@@ -215,10 +215,10 @@ export function MCPView({ serviceRunning }: { serviceRunning: boolean }) {
         setShowAdd(false);
         await fetchServers();
       } else {
-        showMsg(`添加失败: ${data.message || data.error || "未知错误"}`, false);
+        showMsg(`${t("mcp.addFailed")}: ${data.message || data.error || t("mcp.unknownError")}`, false);
       }
     } catch (e) {
-      showMsg(`添加异常: ${e}`, false);
+      showMsg(`${t("mcp.addError")}: ${e}`, false);
     }
     setBusy(null);
   };
@@ -226,10 +226,10 @@ export function MCPView({ serviceRunning }: { serviceRunning: boolean }) {
   const loadInstructions = async (name: string) => {
     if (instructions[name]) return;
     try {
-      const res = await fetch(`${API_BASE}/api/mcp/instructions/${encodeURIComponent(name)}`);
+      const res = await fetch(`${apiBaseUrl}/api/mcp/instructions/${encodeURIComponent(name)}`);
       if (res.ok) {
         const data = await res.json();
-        setInstructions(prev => ({ ...prev, [name]: data.instructions || "无使用说明" }));
+        setInstructions(prev => ({ ...prev, [name]: data.instructions || t("mcp.noInstructions") }));
       }
     } catch { /* ignore */ }
   };
@@ -247,7 +247,7 @@ export function MCPView({ serviceRunning }: { serviceRunning: boolean }) {
     return (
       <div className="card" style={{ textAlign: "center", padding: 40, color: "var(--muted)" }}>
         <IconLink size={32} style={{ marginBottom: 12, opacity: 0.5 }} />
-        <p style={{ fontSize: 15 }}>服务未运行，请先启动 OpenAkita 服务</p>
+        <p style={{ fontSize: 15 }}>{t("mcp.serviceNotRunning")}</p>
       </div>
     );
   }
@@ -258,13 +258,13 @@ export function MCPView({ serviceRunning }: { serviceRunning: boolean }) {
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <IconLink size={20} />
-          <span style={{ fontSize: 16, fontWeight: 600 }}>MCP 服务器管理</span>
+          <span style={{ fontSize: 16, fontWeight: 600 }}>{t("mcp.title")}</span>
           {!mcpEnabled && (
             <span style={{
               background: "var(--warn-bg, #fef3c7)", color: "var(--warn, #d97706)",
               fontSize: 12, padding: "2px 8px", borderRadius: 4,
             }}>
-              MCP 已禁用
+              {t("mcp.disabled")}
             </span>
           )}
         </div>
@@ -274,7 +274,7 @@ export function MCPView({ serviceRunning }: { serviceRunning: boolean }) {
             onClick={() => setShowAdd(!showAdd)}
             style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 13, padding: "4px 12px" }}
           >
-            <IconPlus size={14} /> 添加服务器
+            <IconPlus size={14} /> {t("mcp.addServer")}
           </button>
           <button
             className="btnSecondary"
@@ -282,7 +282,7 @@ export function MCPView({ serviceRunning }: { serviceRunning: boolean }) {
             disabled={loading}
             style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 13, padding: "4px 12px" }}
           >
-            <IconRefresh size={14} /> 刷新
+            <IconRefresh size={14} /> {t("topbar.refresh")}
           </button>
         </div>
       </div>
@@ -303,20 +303,20 @@ export function MCPView({ serviceRunning }: { serviceRunning: boolean }) {
       {/* Add server form */}
       {showAdd && (
         <div className="card" style={{ marginBottom: 16 }}>
-          <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 12 }}>添加 MCP 服务器</div>
+          <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 12 }}>{t("mcp.addServerTitle")}</div>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px 16px" }}>
             <div>
-              <label className="label">服务器名称 *</label>
-              <input className="input" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="如: web-search" />
+              <label className="label">{t("mcp.serverName")} *</label>
+              <input className="input" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder={t("mcp.serverNamePlaceholder")} />
             </div>
             <div>
-              <label className="label">描述</label>
-              <input className="input" value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} placeholder="服务器用途说明" />
+              <label className="label">{t("mcp.description")}</label>
+              <input className="input" value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} placeholder={t("mcp.descriptionPlaceholder")} />
             </div>
             <div>
-              <label className="label">传输协议</label>
+              <label className="label">{t("mcp.transport")}</label>
               <select className="input" value={form.transport} onChange={e => setForm({ ...form, transport: e.target.value as "stdio" | "streamable_http" | "sse" })}>
-                <option value="stdio">stdio (标准输入输出)</option>
+                <option value="stdio">stdio ({t("mcp.stdioDesc")})</option>
                 <option value="streamable_http">Streamable HTTP</option>
                 <option value="sse">SSE (Server-Sent Events)</option>
               </select>
@@ -324,11 +324,11 @@ export function MCPView({ serviceRunning }: { serviceRunning: boolean }) {
             {form.transport === "stdio" ? (
               <>
                 <div>
-                  <label className="label">启动命令 *</label>
-                  <input className="input" value={form.command} onChange={e => setForm({ ...form, command: e.target.value })} placeholder="如: python, npx, node" />
+                  <label className="label">{t("mcp.command")} *</label>
+                  <input className="input" value={form.command} onChange={e => setForm({ ...form, command: e.target.value })} placeholder={t("mcp.commandPlaceholder")} />
                 </div>
                 <div style={{ gridColumn: "1 / -1" }}>
-                  <label className="label">参数 (空格分隔，或每行一个；路径含空格请用引号包裹)</label>
+                  <label className="label">{t("mcp.argsLabel")}</label>
                   <textarea
                     className="input"
                     value={form.args}
@@ -347,7 +347,7 @@ export function MCPView({ serviceRunning }: { serviceRunning: boolean }) {
               </div>
             )}
             <div style={{ gridColumn: "1 / -1" }}>
-              <label className="label">环境变量 (每行一个，格式 KEY=VALUE)</label>
+              <label className="label">{t("mcp.envLabel")}</label>
               <textarea
                 className="input"
                 value={form.env}
@@ -361,14 +361,14 @@ export function MCPView({ serviceRunning }: { serviceRunning: boolean }) {
           <div style={{ display: "flex", gap: 8, marginTop: 14, justifyContent: "space-between", alignItems: "center" }}>
             <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, color: "var(--muted)", cursor: "pointer" }}>
               <input type="checkbox" checked={form.auto_connect} onChange={e => setForm({ ...form, auto_connect: e.target.checked })} />
-              启动时自动连接
+              {t("mcp.autoConnect")}
             </label>
             <div style={{ display: "flex", gap: 8 }}>
               <button className="btnSecondary" onClick={() => { setShowAdd(false); setForm({ ...emptyForm }); }} style={{ fontSize: 13, padding: "6px 16px" }}>
-                取消
+                {t("common.cancel")}
               </button>
               <button className="btnPrimary" onClick={addServer} disabled={busy === "add"} style={{ fontSize: 13, padding: "6px 16px" }}>
-                {busy === "add" ? "添加中..." : "添加"}
+                {busy === "add" ? t("mcp.adding") : t("mcp.add")}
               </button>
             </div>
           </div>
@@ -378,14 +378,12 @@ export function MCPView({ serviceRunning }: { serviceRunning: boolean }) {
       {/* Server list */}
       {loading && servers.length === 0 ? (
         <div className="card" style={{ textAlign: "center", padding: 30, color: "var(--muted)" }}>
-          加载中...
+          {t("common.loading")}
         </div>
       ) : servers.length === 0 ? (
         <div className="card" style={{ textAlign: "center", padding: 40, color: "var(--muted)" }}>
-          <p style={{ fontSize: 15, marginBottom: 8 }}>暂无 MCP 服务器配置</p>
-          <p style={{ fontSize: 13 }}>
-            在项目 <code>mcps/</code> 目录下添加服务器配置，或点击上方"添加服务器"按钮
-          </p>
+          <p style={{ fontSize: 15, marginBottom: 8 }}>{t("mcp.noServers")}</p>
+          <p style={{ fontSize: 13 }}>{t("mcp.noServersHint")}</p>
         </div>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
@@ -411,7 +409,7 @@ export function MCPView({ serviceRunning }: { serviceRunning: boolean }) {
                     background: s.source === "workspace" ? "var(--ok-bg, #dcfce7)" : "var(--bg-subtle, #f1f5f9)",
                     color: s.source === "workspace" ? "var(--ok, #16a34a)" : "var(--muted)",
                   }}>
-                    {s.source === "workspace" ? "工作区" : "内置"}
+                    {s.source === "workspace" ? t("mcp.sourceWorkspace") : t("mcp.sourceBuiltin")}
                   </span>
                   {s.description && (
                     <span style={{ fontSize: 12, color: "var(--muted)" }}>— {s.description}</span>
@@ -419,7 +417,7 @@ export function MCPView({ serviceRunning }: { serviceRunning: boolean }) {
                 </div>
                 <div style={{ display: "flex", alignItems: "center", gap: 8 }} onClick={e => e.stopPropagation()}>
                   <span style={{ fontSize: 12, color: "var(--muted)" }}>
-                    {s.connected ? `${s.tool_count} 工具` : `${s.catalog_tool_count} 工具 (目录)`}
+                    {s.connected ? t("mcp.toolCount", { count: s.tool_count }) : t("mcp.toolCountCatalog", { count: s.catalog_tool_count })}
                   </span>
                   {s.connected ? (
                     <button
@@ -428,7 +426,7 @@ export function MCPView({ serviceRunning }: { serviceRunning: boolean }) {
                       disabled={busy === s.name}
                       style={{ fontSize: 12, padding: "3px 10px", color: "var(--warn, #d97706)" }}
                     >
-                      断开
+                      {t("mcp.disconnect")}
                     </button>
                   ) : (
                     <button
@@ -437,7 +435,7 @@ export function MCPView({ serviceRunning }: { serviceRunning: boolean }) {
                       disabled={busy === s.name}
                       style={{ fontSize: 12, padding: "3px 10px" }}
                     >
-                      {busy === s.name ? "连接中..." : "连接"}
+                      {busy === s.name ? t("mcp.connecting") : t("mcp.connect")}
                     </button>
                   )}
                   {s.removable && (
@@ -446,7 +444,7 @@ export function MCPView({ serviceRunning }: { serviceRunning: boolean }) {
                       onClick={() => removeServer(s.name)}
                       disabled={busy === s.name}
                       style={{ fontSize: 12, padding: "3px 8px", color: "var(--err, #dc2626)" }}
-                      title="删除服务器"
+                      title={t("mcp.deleteServer")}
                     >
                       <IconTrash size={13} />
                     </button>
@@ -462,7 +460,7 @@ export function MCPView({ serviceRunning }: { serviceRunning: boolean }) {
                     {s.transport === "streamable_http" || s.transport === "sse" ? (
                       <span>{s.transport === "sse" ? "SSE" : "HTTP"} URL: <code>{s.url}</code></span>
                     ) : (
-                      <span>命令: <code>{s.command}</code></span>
+                      <span>{t("mcp.commandLabel")}: <code>{s.command}</code></span>
                     )}
                   </div>
 
@@ -470,7 +468,7 @@ export function MCPView({ serviceRunning }: { serviceRunning: boolean }) {
                   {s.tools.length > 0 ? (
                     <div>
                       <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8 }}>
-                        可用工具 ({s.tools.length})
+                        {t("mcp.availableTools")} ({s.tools.length})
                       </div>
                       <div style={{ display: "grid", gap: 6 }}>
                         {s.tools.map(t => (
@@ -489,10 +487,10 @@ export function MCPView({ serviceRunning }: { serviceRunning: boolean }) {
                     </div>
                   ) : !s.connected ? (
                     <div style={{ fontSize: 13, color: "var(--muted)" }}>
-                      <DotYellow /> 连接后可查看可用工具
+                      <DotYellow /> {t("mcp.connectToSeeTools")}
                     </div>
                   ) : (
-                    <div style={{ fontSize: 13, color: "var(--muted)" }}>此服务器未暴露任何工具</div>
+                    <div style={{ fontSize: 13, color: "var(--muted)" }}>{t("mcp.noTools")}</div>
                   )}
 
                   {/* Instructions */}
@@ -500,7 +498,7 @@ export function MCPView({ serviceRunning }: { serviceRunning: boolean }) {
                     <details style={{ marginTop: 12 }}>
                       <summary style={{ cursor: "pointer", fontSize: 13, fontWeight: 600, color: "var(--primary, #3b82f6)" }}>
                         <IconInfo size={13} style={{ verticalAlign: "middle", marginRight: 4 }} />
-                        使用说明
+                        {t("mcp.instructions")}
                       </summary>
                       <pre style={{
                         marginTop: 8, padding: 12, background: "var(--bg-subtle, #f8fafc)",
@@ -520,11 +518,11 @@ export function MCPView({ serviceRunning }: { serviceRunning: boolean }) {
 
       {/* Help text */}
       <div style={{ marginTop: 16, fontSize: 12, color: "var(--muted)", lineHeight: 1.8 }}>
-        <strong>MCP (Model Context Protocol)</strong> 让 Agent 通过标准化协议调用外部工具和服务。
+        <strong>MCP (Model Context Protocol)</strong> {t("mcp.helpLine1")}
         <br />
-        支持三种传输协议：<code>stdio</code>（本地进程）、<code>Streamable HTTP</code>（远程服务）和 <code>SSE</code>（兼容旧版 MCP 服务器）。
+        {t("mcp.helpLine2")}
         <br />
-        内置配置位于 <code>mcps/</code> 目录，用户/AI 添加的配置保存在 <code>data/mcp/servers/</code> 目录，每个服务器一个子目录。
+        {t("mcp.helpLine3")}
       </div>
     </div>
   );

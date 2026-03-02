@@ -60,7 +60,7 @@ Use `get_skill_info(skill_name)` to load full instructions when needed.
         skill_entries = []
         for skill in skills:
             # 获取描述第一行
-            desc = skill.description
+            desc = skill.description or ""
             first_line = desc.split("\n")[0].strip()
 
             entry = self.SKILL_ENTRY_TEMPLATE.format(

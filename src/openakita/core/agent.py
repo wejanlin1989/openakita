@@ -2274,9 +2274,9 @@ search_github → install_skill → 使用
         # Available skills list
         skills_lines = []
         try:
-            skill_registry = getattr(self, "skill_catalog", None)
-            if skill_registry:
-                reg = getattr(skill_registry, "registry", None)
+            catalog = getattr(self, "skill_catalog", None)
+            if catalog:
+                reg = getattr(catalog, "registry", None)
                 if reg:
                     for entry in reg.list_all():
                         skills_lines.append(f"`{entry.name}`")

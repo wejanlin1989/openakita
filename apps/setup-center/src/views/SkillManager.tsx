@@ -729,7 +729,7 @@ export function SkillManager({
       ));
       await loadSkills();
       setTab("installed");
-      setExpandedSkill(skill.name);
+      setExpandedSkill(skill.skillId || skill.name);
     } catch (e) {
       const msg = String(e);
       if (msg.includes("已存在") || msg.toLowerCase().includes("already exist")) {

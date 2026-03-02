@@ -340,6 +340,10 @@ async def remove_mcp_server(request: Request, server_name: str):
         prefix = f"{server_name}:"
         for key in [k for k in client._tools if k.startswith(prefix)]:
             del client._tools[key]
+        for key in [k for k in client._resources if k.startswith(prefix)]:
+            del client._resources[key]
+        for key in [k for k in client._prompts if k.startswith(prefix)]:
+            del client._prompts[key]
 
     catalog = _get_mcp_catalog(request)
     if catalog:

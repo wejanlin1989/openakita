@@ -315,8 +315,12 @@ class SkillsHandler:
         """加载新创建的技能"""
         skill_name = params["skill_name"]
 
-        # 查找技能目录
-        skills_dir = Path("skills")
+        # 查找技能目录（使用项目根目录，避免依赖 CWD）
+        try:
+            from openakita.config import settings
+            skills_dir = settings.project_root / "skills"
+        except Exception:
+            skills_dir = Path("skills")
         skill_dir = skills_dir / skill_name
 
         if not skill_dir.exists():
