@@ -425,9 +425,12 @@ jobs:
             FRAMEWORK_DIR="${app}/Contents/Resources/resources/openakita-server/_internal/Python.framework"
             if [ -d "${FRAMEWORK_DIR}" ]; then
               for pybin in \
+                "${FRAMEWORK_DIR}/Python" \
                 "${FRAMEWORK_DIR}/Versions/3.11/Python" \
                 "${FRAMEWORK_DIR}/Versions/Current/Python" \
-                "${FRAMEWORK_DIR}/Resources/Python.app/Contents/MacOS/Python"; do
+                "${FRAMEWORK_DIR}/Resources/Python.app/Contents/MacOS/Python" \
+                "${FRAMEWORK_DIR}/Versions/3.11/Resources/Python.app/Contents/MacOS/Python" \
+                "${FRAMEWORK_DIR}/Versions/Current/Resources/Python.app/Contents/MacOS/Python"; do
                 if [ -f "${pybin}" ]; then
                   echo "Re-signing Python framework binary: ${pybin}"
                   codesign --force --options runtime --timestamp --sign "${IDENTITY}" "${pybin}"
