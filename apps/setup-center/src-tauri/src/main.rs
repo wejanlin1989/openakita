@@ -216,12 +216,15 @@ fn bundled_internal_python_path() -> Option<PathBuf> {
             bundled.join("_internal").join("python"),
         ]
     };
+    let internal_dir = bundled.join("_internal");
     for internal_py in candidates {
         if !internal_py.exists() {
             continue;
         }
         let mut c = Command::new(&internal_py);
         c.args(["-m", "pip", "--version"]);
+        strip_harmful_python_env(&mut c);
+        c.env("PYTHONHOME", &internal_dir);
         apply_no_window(&mut c);
         if let Ok(output) = c.output() {
             if output.status.success() {
@@ -3130,9 +3133,12 @@ fn diagnose_python_env(venv_dir: String) -> PythonDiagnostic {
     } else {
         let mut usable_path: Option<PathBuf> = None;
         let mut errors = vec![];
+        let internal_dir = bundled_dir.join("_internal");
         for py in &existing_bundled {
             let mut c = Command::new(py);
             c.args(["-m", "pip", "--version"]);
+            strip_harmful_python_env(&mut c);
+            c.env("PYTHONHOME", &internal_dir);
             apply_no_window(&mut c);
             match c.output() {
                 Ok(out) if out.status.success() => {
@@ -3480,6 +3486,8 @@ async fn repair_python_env(
             emit("修复 venv", 50, "创建新的 venv...");
             let mut c = Command::new(&python_path);
             apply_no_window(&mut c);
+            strip_harmful_python_env(&mut c);
+            c.env("PYTHONHOME", bundled_backend_dir().join("_internal"));
             c.args(["-m", "venv"]).arg(&venv);
             let status = c.status().map_err(|e| format!("创建 venv 失败: {e}"))?;
             if !status.success() {
@@ -3596,6 +3604,7 @@ async fn create_venv(python_command: Vec<String>, venv_dir: String) -> Result<St
         let mut c = Command::new(&bundled_py);
         apply_no_window(&mut c);
         strip_harmful_python_env(&mut c);
+        c.env("PYTHONHOME", bundled_backend_dir().join("_internal"));
         c.args(["-m", "venv"])
             .arg(&venv)
             .status()
