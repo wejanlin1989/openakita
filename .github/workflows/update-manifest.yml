@@ -117,10 +117,12 @@ jobs:
               if curl -sf "${MANIFEST_CHECK_URL}" -o existing-release.json 2>/dev/null; then
                 OLD_VER=$(python -c "import json; print(json.load(open('existing-release.json'))['version'])" 2>/dev/null || echo "0.0.0")
                 echo "Existing stable version: ${OLD_VER}"
-                IS_NEWER=$(python -c "old=list(map(int,'${OLD_VER}'.split('.')));new=list(map(int,'${NEW_VER}'.split('.')));print('true' if new>old else 'false')")
-                if [ "$IS_NEWER" = "false" ]; then
-                  echo "⏭️ Skipping: ${NEW_VER} <= ${OLD_VER} (use force_update to override)"
+                IS_OLDER=$(python -c "old=list(map(int,'${OLD_VER}'.split('.')));new=list(map(int,'${NEW_VER}'.split('.')));print('true' if new<old else 'false')")
+                if [ "$IS_OLDER" = "true" ]; then
+                  echo "⏭️ Skipping: ${NEW_VER} < ${OLD_VER} (use force_update to override)"
                   SHOULD_UPDATE="false"
+                elif [ "${NEW_VER}" = "${OLD_VER}" ]; then
+                  echo "🔄 Same version ${NEW_VER}, will overwrite (re-release)"
                 fi
               else
                 echo "No existing release.json found, will create"

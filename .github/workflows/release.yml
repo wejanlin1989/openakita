@@ -908,9 +908,8 @@ jobs:
           echo "New version: ${NEW_VER}"
 
           if [ "$IS_STABLE" = "true" ]; then
-            # ── 稳定版：只有版本号更大才覆盖 release.json（防止老分支 bugfix 降级） ──
+            # ── 稳定版：版本号更大则覆盖，相同则也覆盖（支持重新发布），更小则跳过 ──
             SHOULD_UPDATE="true"
-            # 尝试获取当前线上的 release.json（优先从 OSS，回退到官网）
             MANIFEST_CHECK_URL="https://openakita.ai/api/release.json"
             if [ -n "${HAS_OSS_KEY}" ]; then
               MANIFEST_CHECK_URL="https://${{ secrets.ALIYUN_OSS_CDN_DOMAIN }}/api/release.json"
@@ -918,10 +917,12 @@ jobs:
             if curl -sf "${MANIFEST_CHECK_URL}" -o existing-release.json 2>/dev/null; then
               OLD_VER=$(python -c "import json; print(json.load(open('existing-release.json'))['version'])" 2>/dev/null || echo "0.0.0")
               echo "Existing stable version: ${OLD_VER}"
-              IS_NEWER=$(python -c "old=list(map(int,'${OLD_VER}'.split('.')));new=list(map(int,'${NEW_VER}'.split('.')));print('true' if new>old else 'false')")
-              if [ "$IS_NEWER" = "false" ]; then
-                echo "⏭️ Skipping release.json update: ${NEW_VER} <= ${OLD_VER}"
+              IS_OLDER=$(python -c "old=list(map(int,'${OLD_VER}'.split('.')));new=list(map(int,'${NEW_VER}'.split('.')));print('true' if new<old else 'false')")
+              if [ "$IS_OLDER" = "true" ]; then
+                echo "⏭️ Skipping release.json update: ${NEW_VER} < ${OLD_VER} (older version)"
                 SHOULD_UPDATE="false"
+              elif [ "${NEW_VER}" = "${OLD_VER}" ]; then
+                echo "🔄 Same version ${NEW_VER}, will overwrite (re-release)"
               fi
             else
               echo "No existing release.json found, will create"
