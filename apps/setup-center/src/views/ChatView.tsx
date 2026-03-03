@@ -110,8 +110,18 @@ function formatAskUserAnswer(answer: string, askUser: ChatAskUser): string {
       if (formatted) return formatted;
     }
   } catch { /* not JSON */ }
-  const opt = askUser.options?.find((o) => o.id === answer);
+  const options = askUser.options || questions[0]?.options;
+  const opt = options?.find((o) => o.id === answer);
   if (opt) return opt.label;
+  if (answer.includes(",") && options) {
+    const ids = answer.split(",");
+    if (ids.every((id) => id.startsWith("OTHER:") || options.some((o) => o.id === id))) {
+      return ids.map((id) => {
+        if (id.startsWith("OTHER:")) return id.slice(6);
+        return options.find((o) => o.id === id)?.label ?? id;
+      }).join(", ");
+    }
+  }
   return answer;
 }
 
