@@ -5503,6 +5503,48 @@ export function App() {
           </div>
         </div>
 
+        {/* ── Web 访问网络配置 ── */}
+        <div className="card" style={{ marginTop: 12 }}>
+          {sectionHeader("webnet", t("adv.webNetworkTitle", { defaultValue: "Web 访问 / 网络" }))}
+          <div style={{ paddingLeft: 22 }}>
+            <div className="cardHint" style={{ marginBottom: 8 }}>
+              {t("adv.webNetworkHint", { defaultValue: "控制 HTTP API 服务的监听范围和代理设置。修改后需重启后端生效。" })}
+            </div>
+            <FieldBool k="API_HOST" label={t("adv.apiHostLabel", { defaultValue: "允许外部访问（局域网/公网）" })}
+              help={t("adv.apiHostHelp", { defaultValue: "开启后监听 0.0.0.0，允许其他设备通过 IP 访问 Web 端。关闭则仅本机可访问。" })}
+              envDraft={{ ...envDraft, API_HOST: (envDraft.API_HOST === "0.0.0.0") ? "true" : "false" }}
+              onEnvChange={(fn) => {
+                const next = fn({ API_HOST: (envDraft.API_HOST === "0.0.0.0") ? "true" : "false" });
+                if (next.API_HOST === "true") {
+                  askConfirm(
+                    t("adv.apiHostWarn"),
+                    () => setEnvDraft((prev) => ({ ...prev, API_HOST: "0.0.0.0" })),
+                  );
+                } else {
+                  setEnvDraft((prev) => ({ ...prev, API_HOST: "127.0.0.1" }));
+                }
+              }}
+            />
+            <FieldBool k="TRUST_PROXY" label={t("adv.trustProxyLabel", { defaultValue: "反向代理模式（Nginx/Caddy）" })}
+              help={t("adv.trustProxyHelp", { defaultValue: "通过反向代理部署时必须开启。开启后读取 X-Forwarded-For 获取真实 IP，并关闭本地免密。" })}
+              envDraft={envDraft} onEnvChange={(fn) => setEnvDraft((prev) => fn(prev))}
+            />
+            <div style={{ marginTop: 10, display: "flex", gap: 8, alignItems: "center" }}>
+              <button className="btnSmall" disabled={!!busy} onClick={async () => {
+                setBusy(t("common.loading"));
+                try {
+                  await saveEnvKeys(["API_HOST", "TRUST_PROXY"]);
+                  setNotice(t("adv.webNetworkSaved", { defaultValue: "网络设置已保存，重启后端后生效" }));
+                } catch (e: any) { setError(String(e)); }
+                finally { setBusy(null); }
+              }}>{t("common.save", { defaultValue: "保存" })}</button>
+              <span style={{ fontSize: 11, color: "var(--muted)", opacity: 0.7 }}>
+                {t("adv.webNetworkRestartHint", { defaultValue: "保存后需在状态面板重启后端生效" })}
+              </span>
+            </div>
+          </div>
+        </div>
+
         {/* ── Web 访问密码管理 (desktop only) ── */}
         {IS_TAURI && shouldUseHttpApi() && (
         <div className="card" style={{ marginTop: 12 }}>
