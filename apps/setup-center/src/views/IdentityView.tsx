@@ -79,6 +79,10 @@ export function IdentityView({ serviceRunning, apiBaseUrl }: Props) {
     warnings?: string[];
     onConfirm: () => void;
   } | null>(null);
+  const [bannerDismissed, setBannerDismissed] = useState(() => {
+    try { return localStorage.getItem("identity_banner_dismissed") === "1"; } catch { return false; }
+  });
+  const [fileWarningExpanded, setFileWarningExpanded] = useState(false);
 
   const editorRef = useRef<HTMLTextAreaElement>(null);
 
@@ -111,6 +115,7 @@ export function IdentityView({ serviceRunning, apiBaseUrl }: Props) {
       setContent(data.content || "");
       setOriginalContent(data.content || "");
       setSelectedFile(name);
+      setFileWarningExpanded(false);
     } catch (e) {
       setError(t("identity.loadError") + ": " + String(e));
     } finally {
@@ -236,23 +241,29 @@ export function IdentityView({ serviceRunning, apiBaseUrl }: Props) {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 0, height: "100%" }}>
-      {/* Page-level warning banner */}
-      <div style={{
-        background: "var(--warning-bg, #fef3c7)",
-        border: "1px solid var(--warning-border, #f59e0b)",
-        borderRadius: 8,
-        padding: "10px 14px",
-        marginBottom: 12,
-        display: "flex",
-        alignItems: "flex-start",
-        gap: 10,
-        fontSize: 13,
-        color: "var(--warning-text, #92400e)",
-        lineHeight: 1.5,
-      }}>
-        <IconInfo size={18} style={{ flexShrink: 0, marginTop: 2 }} />
-        <span style={{ flex: 1 }}>{t("identity.pageBanner")}</span>
-      </div>
+      {/* Page-level warning banner (dismissible) */}
+      {!bannerDismissed && (
+        <div style={{
+          background: "var(--warning-bg, #fef3c7)",
+          border: "1px solid var(--warning-border, #f59e0b)",
+          borderRadius: 6,
+          padding: "6px 12px",
+          marginBottom: 8,
+          display: "flex",
+          alignItems: "center",
+          gap: 8,
+          fontSize: 12,
+          color: "var(--warning-text, #92400e)",
+          lineHeight: 1.4,
+        }}>
+          <IconInfo size={14} style={{ flexShrink: 0 }} />
+          <span style={{ flex: 1 }}>{t("identity.pageBanner")}</span>
+          <IconX size={14} style={{ flexShrink: 0, cursor: "pointer", opacity: 0.6 }} onClick={() => {
+            setBannerDismissed(true);
+            try { localStorage.setItem("identity_banner_dismissed", "1"); } catch { /* ignore */ }
+          }} />
+        </div>
+      )}
 
       <div style={{ display: "flex", gap: 12, flex: 1, minHeight: 0 }}>
         {/* Left: File list */}
@@ -333,23 +344,29 @@ export function IdentityView({ serviceRunning, apiBaseUrl }: Props) {
                 </button>
               </div>
 
-              {/* File-level warning */}
+              {/* File-level warning (compact, expandable) */}
               {warningKey && (
-                <div style={{
-                  background: "var(--warning-bg, #fef3c7)",
-                  border: "1px solid var(--warning-border, #f59e0b)",
-                  borderRadius: 6,
-                  padding: "8px 12px",
-                  marginBottom: 8,
-                  fontSize: 12,
-                  color: "var(--warning-text, #92400e)",
-                  lineHeight: 1.5,
-                  display: "flex",
-                  alignItems: "flex-start",
-                  gap: 8,
-                }}>
-                  <IconInfo size={14} style={{ flexShrink: 0, marginTop: 2 }} />
-                  <span>{t(`identity.${warningKey}`)}</span>
+                <div
+                  style={{
+                    background: "var(--warning-bg, #fef3c7)",
+                    border: "1px solid var(--warning-border, #f59e0b)",
+                    borderRadius: 5,
+                    padding: "4px 10px",
+                    marginBottom: 6,
+                    fontSize: 11.5,
+                    color: "var(--warning-text, #92400e)",
+                    lineHeight: 1.4,
+                    cursor: "pointer",
+                  }}
+                  onClick={() => setFileWarningExpanded(v => !v)}
+                >
+                  <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                    <IconInfo size={12} style={{ flexShrink: 0 }} />
+                    <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: fileWarningExpanded ? "normal" : "nowrap" }}>
+                      {t(`identity.${warningKey}`)}
+                    </span>
+                    {!fileWarningExpanded && <span style={{ flexShrink: 0, opacity: 0.5, fontSize: 10 }}>▼</span>}
+                  </div>
                 </div>
               )}
 

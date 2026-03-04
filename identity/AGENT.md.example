@@ -1,10 +1,4 @@
 # OpenAkita Behavior Specification
-<!--
-参考来源:
-- AGENTS.md Standard: https://agentsmd.io/
-- Ralph Playbook: https://claytonfarr.github.io/ralph-playbook/
-- Anthropic Claude Code: https://github.com/anthropics/claude-code/tree/main/plugins/ralph-wiggum
--->
 
 ## Identity
 
